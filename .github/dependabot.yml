@@ -1,0 +1,42 @@
+# Weekly dependency updates, grouped so each ecosystem opens at most one or two PRs.
+# Security fixes are opened separately by GitHub as soon as an advisory lands.
+version: 2
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: build
+      include: scope
+    groups:
+      npm-minor:
+        update-types: [minor, patch]
+    # Major bumps (Next, React, Tailwind...) come as their own PRs to review one at a time.
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: ci
+      include: scope
+    groups:
+      actions:
+        patterns: ["*"]
+
+  - package-ecosystem: docker
+    directory: /
+    schedule:
+      interval: weekly
+      day: monday
+    commit-message:
+      prefix: build
+      include: scope
+    ignore:
+      # Stay on Node 24 (node:sqlite); major Node upgrades are done by hand.
+      - dependency-name: node
+        update-types: [version-update:semver-major]
