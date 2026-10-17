@@ -14,6 +14,13 @@ updates:
     groups:
       npm-minor:
         update-types: [minor, patch]
+    ignore:
+      # Matches the Node 24 runtime.
+      - dependency-name: "@types/node"
+        update-types: [version-update:semver-major]
+      # typescript-eslint must support a new TypeScript major first.
+      - dependency-name: typescript
+        update-types: [version-update:semver-major]
     # Major bumps (Next, React, Tailwind...) come as their own PRs to review one at a time.
 
   - package-ecosystem: github-actions
