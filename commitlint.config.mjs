@@ -31,6 +31,8 @@ const bulletBody = {
   rules: {
     "body-bullets": ({ raw, header }) => {
       if (/^(Merge|Revert) /.test(header ?? "")) return [true];
+      // Dependabot writes its own release-notes body; the header is still checked.
+      if (/^Signed-off-by: dependabot\[bot\]/m.test(raw ?? "")) return [true];
       const body = bodyLines(raw ?? "").filter((l) => l.trim());
       if (!body.length) {
         return [
