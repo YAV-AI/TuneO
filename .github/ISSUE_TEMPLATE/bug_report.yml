@@ -1,0 +1,75 @@
+name: Bug report
+description: Something in TuneO is broken or behaves unexpectedly.
+title: "[Bug]: "
+labels: ["bug", "triage"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Please search existing issues first.
+        **Never paste API keys, `.env` contents or private song links.**
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened?
+      description: A clear description of the problem.
+      placeholder: When I press Create in Advanced mode with a voice selected, ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: What did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Go to ...
+        2. Click ...
+        3. See error
+    validations:
+      required: true
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Create (Simple / Advanced)
+        - Lyrics writer or magic wand
+        - Remix (cover, extend, replace, add instrumental)
+        - Voices
+        - Library, player or queue
+        - Downloads and file tags
+        - Credits page
+        - Worker, storage or Docker setup
+        - Other
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs and error messages
+      description: Browser console errors and the output of `docker compose logs web worker --tail 50`. Remove any keys.
+      render: shell
+  - type: input
+    id: version
+    attributes:
+      label: TuneO version or commit
+      placeholder: 0.1.0 or a commit hash
+  - type: input
+    id: env
+    attributes:
+      label: Environment
+      placeholder: macOS 15, Docker 29, Chrome 141
+  - type: checkboxes
+    id: checks
+    attributes:
+      label: Checks
+      options:
+        - label: I searched existing issues and this is not a duplicate.
+          required: true
+        - label: I removed API keys and personal data from this report.
+          required: true

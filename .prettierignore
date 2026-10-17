@@ -1,0 +1,11 @@
+# Generated, vendored or third-party text: keep exactly as published.
+node_modules
+.next
+out
+build
+data
+package-lock.json
+next-env.d.ts
+LICENSE
+CODE_OF_CONDUCT.md
+docs/images

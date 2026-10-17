@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest an idea or improvement for TuneO.
+title: "[Feature]: "
+labels: ["enhancement"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: What problem would this solve?
+      placeholder: I often want to ..., but today I have to ...
+    validations:
+      required: true
+  - type: textarea
+    id: solution
+    attributes:
+      label: Proposed solution
+      description: How should it work? Mockups or examples are welcome.
+    validations:
+      required: true
+  - type: textarea
+    id: api
+    attributes:
+      label: API support
+      description: If this needs a KIE AI endpoint, which one? Features the API does not offer cannot be built.
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+  - type: checkboxes
+    id: contribute
+    attributes:
+      label: Contribution
+      options:
+        - label: I would like to work on this myself (see CONTRIBUTING.md).

@@ -1,0 +1,47 @@
+name: Commit messages
+
+on:
+  pull_request:
+    types: [opened, edited, synchronize, reopened]
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  commits:
+    name: Conventional commits
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Check commits in this pull request
+        if: github.event_name == 'pull_request'
+        run: npx commitlint --from ${{ github.event.pull_request.base.sha }} --to ${{ github.event.pull_request.head.sha }} --verbose
+      - name: Check pushed commits
+        if: github.event_name == 'push' && github.event.before != '0000000000000000000000000000000000000000'
+        run: npx commitlint --from ${{ github.event.before }} --to ${{ github.event.after }} --verbose
+
+  pr-title:
+    name: Pull request title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      # Squash merges use the PR title as the commit header, so it must follow the same format.
+      - name: Check title
+        env:
+          TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          pattern='^(feat|fix|docs|style|refactor|perf|test|build|ci|chore|revert)(\([a-z0-9-]+\))?!?: [a-z0-9].*[^.]$'
+          if [[ ! "$TITLE" =~ $pattern ]] || (( ${#TITLE} > 72 )); then
+            echo "::error::PR title must look like 'type(scope): short summary' (max 72 chars, lowercase start, no full stop). Got: $TITLE"
+            exit 1
+          fi
+          echo "PR title OK: $TITLE"

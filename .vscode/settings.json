@@ -1,0 +1,12 @@
+{
+  // Format with the project's Prettier config on save, so every contributor produces identical files.
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "editor.formatOnSave": true,
+  "prettier.requireConfig": true,
+  "prettier.prettierPath": "./node_modules/prettier",
+  "files.eol": "\n",
+  "files.insertFinalNewline": true,
+  "files.trimTrailingWhitespace": true,
+  "[markdown]": { "files.trimTrailingWhitespace": false },
+  "typescript.tsdk": "node_modules/typescript/lib"
+}
