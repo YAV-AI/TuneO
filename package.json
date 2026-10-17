@@ -24,7 +24,7 @@
     "react-dom": "19.3.0"
   },
   "devDependencies": {
-    "@commitlint/cli": "^19.8.1",
+    "@commitlint/cli": "^21.2.3",
     "@commitlint/config-conventional": "^19.8.1",
     "@tailwindcss/turbopack": "^4",
     "@types/node": "^24.19.2",
