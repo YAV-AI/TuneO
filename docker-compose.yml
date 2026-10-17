@@ -1,0 +1,54 @@
+name: tuneo
+
+x-app-env: &app-env
+  KIE_API_KEY: ${KIE_API_KEY:?set KIE_API_KEY in .env}
+  OPENAI_KEY: ${OPENAI_KEY:-}
+  OPENAI_MODEL: ${OPENAI_MODEL:-}
+  OPENAI_REASONING: ${OPENAI_REASONING:-}
+  DATABASE_PATH: /app/data/tuneo.db
+  S3_ENDPOINT: http://rustfs:9000
+  S3_BUCKET: ${S3_BUCKET:-tuneo}
+  S3_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
+  S3_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
+
+services:
+  web:
+    build: { context: ., target: web }
+    environment: *app-env
+    # Localhost only: TuneO has no login, so keep it off the network (see README > Security).
+    ports: ["127.0.0.1:${WEB_PORT:-3000}:3000"]
+    volumes: ["app-data:/app/data"]
+    depends_on:
+      rustfs: { condition: service_healthy }
+    restart: unless-stopped
+
+  worker:
+    build: { context: ., target: worker }
+    environment: *app-env
+    volumes: ["app-data:/app/data"]
+    depends_on:
+      rustfs: { condition: service_healthy }
+    restart: unless-stopped
+
+  rustfs:
+    image: rustfs/rustfs:1.0.1
+    environment:
+      RUSTFS_ACCESS_KEY: ${S3_ACCESS_KEY:-rustfsadmin}
+      RUSTFS_SECRET_KEY: ${S3_SECRET_KEY:-rustfsadmin}
+    ports:
+      - "127.0.0.1:${RUSTFS_PORT:-9000}:9000"
+      - "127.0.0.1:${RUSTFS_CONSOLE_PORT:-9001}:9001"
+    volumes: ["rustfs-data:/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 9000 || exit 1"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    restart: unless-stopped
+
+volumes:
+  # SQLite lives in a Docker volume: WAL locking does not work across a macOS bind mount.
+  app-data:
+    name: tuneo-data
+  rustfs-data:
+    name: tuneo-rustfs
