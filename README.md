@@ -16,7 +16,7 @@ Create full songs with vocals, write and arrange lyrics with AI, remix, extend, 
 
 [Features](#features) · [How it works](#how-it-works) · [KIE AI Suno API](#how-tuneo-uses-the-kie-ai-suno-api) · [Quick start](#quick-start) · [Configuration](#configuration) · [Legal](#legal) · [License](#license)
 
-<img src="docs/images/create.png" alt="TuneO create page: AI song generator with simple and advanced modes, library and player" width="100%" />
+<img src="docs/images/banner.png" alt="TuneO: open-source, self-hosted AI music studio with song creation, remix, stems and custom voices" width="100%" />
 
 </div>
 
