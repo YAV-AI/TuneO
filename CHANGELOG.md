@@ -20,3 +20,4 @@ First public release.
 - Credits page with balance, spend per action and an activity log from KIE's charge records.
 - Background worker that completes generations without an open browser and archives all media to RustFS.
 - Docker Compose setup with web, worker and RustFS services, bound to localhost by default.
+- Sidebar notice when a newer TuneO release is available on GitHub.
