@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  ArrowUpCircle,
   BookOpen,
   Coins,
   LifeBuoy,
@@ -38,6 +39,7 @@ export default function Sidebar() {
   const { artistName, setProfileOpen } = useStudio();
   const [collapsed, setCollapsed] = useState(false);
   const [credits, setCredits] = useState<number | null>(null);
+  const [update, setUpdate] = useState<{ version: string; url: string } | null>(null);
 
   useEffect(() => {
     const t = setTimeout(() => {
@@ -60,6 +62,18 @@ export default function Sidebar() {
       clearTimeout(first);
       clearInterval(t);
     };
+  }, []);
+
+  useEffect(() => {
+    const t = setTimeout(
+      () =>
+        fetch("/api/update")
+          .then((r) => (r.ok ? r.json() : null))
+          .then((d) => d?.update && setUpdate(d.update))
+          .catch(() => {}),
+      0,
+    );
+    return () => clearTimeout(t);
   }, []);
 
   const toggle = () => {
@@ -121,6 +135,18 @@ export default function Sidebar() {
       </nav>
 
       <div className="mt-auto flex flex-col gap-1">
+        {update && (
+          <a
+            href={update.url}
+            target="_blank"
+            rel="noreferrer"
+            className={item(false)}
+            title={`Update available: v${update.version}. Run: git pull && docker compose up -d --build`}
+          >
+            <ArrowUpCircle size={18} className="text-fg" />
+            {!collapsed && <span className="truncate text-fg">Update to v{update.version}</span>}
+          </a>
+        )}
         <Link href="/credits" className={item(pathname === "/credits")} title="Credits and usage">
           <Coins size={18} />
           {!collapsed && (credits === null ? "Credits" : `${Math.floor(credits).toLocaleString()} credits`)}
