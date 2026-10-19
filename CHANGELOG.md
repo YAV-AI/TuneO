@@ -2,7 +2,7 @@
 
 All notable changes to TuneO are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
-## [Unreleased]
+## [0.2.0] - 2026-10-19
 
 ### Added
 
@@ -39,4 +39,5 @@ First public release.
 - Docker Compose setup with web, worker and RustFS services, bound to localhost by default.
 - Sidebar notice when a newer TuneO release is available on GitHub.
 
+[0.2.0]: https://github.com/YAV-AI/TuneO/releases/tag/v0.2.0
 [0.1.0]: https://github.com/YAV-AI/TuneO/releases/tag/v0.1.0
