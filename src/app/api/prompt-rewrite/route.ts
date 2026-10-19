@@ -3,12 +3,18 @@ const MODEL = process.env.OPENAI_MODEL || "gpt-5.5";
 const REASONING = process.env.OPENAI_REASONING || "low";
 const SUPPORTS_REASONING = /^(gpt-5|gpt-6|o\d)/.test(MODEL);
 
-const SYSTEM = `You rewrite a user's short song idea into a compact song description for an AI music generator that writes the lyrics itself.
+const system = (
+  instrumental: boolean,
+) => `You rewrite a user's short song idea into a compact song description for an AI music generator that writes the lyrics itself.
 Format: comma-separated descriptors in priority order, then a semicolon and a very short topic phrase. Example:
 Roots dub, bittersweet, dreamy, 72 BPM, deep rolling bass, tape-echo guitar, melodica, soft soulful male vocal; about loving someone who never looks back
 Rules:
 - Start with the most specific genre (e.g. "Synth-pop", not "pop").
-- Then 6 to 10 descriptors: one mood direction (no contradictions), tempo as a number (e.g. 96 BPM), 2 to 4 key instruments or sounds, and the vocal (gender, tone, delivery).
+- Then 6 to 10 descriptors: one mood direction (no contradictions), tempo as a number (e.g. 96 BPM), ${
+  instrumental
+    ? '2 to 4 key instruments or sounds, and end the descriptors with "instrumental, no vocals". This is an instrumental: never mention a singer, voice, vocal, choir, rap or chant.'
+    : "2 to 4 key instruments or sounds, and the vocal (gender, tone, delivery)."
+}
 - End with "; about ..." in under 10 words.
 - Keep the user's genre, language and any details they gave; add specifics, never contradict them.
 - Hard limit: 200 characters total. No sentences, no artist names, no real song titles, no quotes.
@@ -17,7 +23,7 @@ Return only the description.`;
 export async function POST(req: Request) {
   const key = process.env.OPENAI_KEY;
   if (!key) return Response.json({ error: "OPENAI_KEY is not set" }, { status: 500 });
-  const { prompt } = (await req.json()) as { prompt?: string };
+  const { prompt, instrumental } = (await req.json()) as { prompt?: string; instrumental?: boolean };
   const idea = (prompt ?? "").trim();
   if (!idea) return Response.json({ error: "Type a short idea first" }, { status: 400 });
 
@@ -31,7 +37,7 @@ export async function POST(req: Request) {
         model: MODEL,
         ...(SUPPORTS_REASONING ? { reasoning_effort: REASONING } : {}),
         messages: [
-          { role: "system", content: SYSTEM },
+          { role: "system", content: system(!!instrumental) },
           { role: "user", content: idea.slice(0, 3000) },
         ],
       }),

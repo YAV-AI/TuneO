@@ -150,7 +150,12 @@ export function CoverDialog({ song, onClose, onStarted }: DialogProps) {
   const [model, setModel] = useState(song.model ?? "V6");
 
   return (
-    <Modal title={`Cover '${song.title}'`} subtitle="Reimagine this song in a new style" onClose={onClose} wide>
+    <Modal
+      title={`Cover '${song.title}'`}
+      subtitle="Rework this audio in a new style, keeping its melody and structure"
+      onClose={onClose}
+      wide
+    >
       <div className="flex flex-col gap-4">
         <Field label="New styles">
           <textarea
@@ -161,7 +166,7 @@ export function CoverDialog({ song, onClose, onStarted }: DialogProps) {
             className={input}
           />
         </Field>
-        <Field label="Lyrics (prefilled from the original)">
+        <Field label={song.lyrics ? "Lyrics (prefilled from the original)" : "Lyrics (optional)"}>
           <textarea
             rows={6}
             value={instrumental ? "" : lyrics}

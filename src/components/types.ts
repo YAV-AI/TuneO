@@ -93,3 +93,21 @@ export function downloadHref(href: string | null | undefined, title: string) {
   if (!href.startsWith("/api/")) return href;
   return `${href}?download=${encodeURIComponent(title)}`;
 }
+
+// Reads the duration in the browser (the server has no audio decoder), then uploads.
+export function readDuration(file: File) {
+  return new Promise<number | null>((resolve) => {
+    const url = URL.createObjectURL(file);
+    const audio = new Audio();
+    audio.preload = "metadata";
+    audio.onloadedmetadata = () => {
+      URL.revokeObjectURL(url);
+      resolve(Number.isFinite(audio.duration) ? audio.duration : null);
+    };
+    audio.onerror = () => {
+      URL.revokeObjectURL(url);
+      resolve(null);
+    };
+    audio.src = url;
+  });
+}

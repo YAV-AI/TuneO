@@ -2,6 +2,23 @@
 
 All notable changes to TuneO are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/).
 
+## [Unreleased]
+
+### Added
+
+- Audio added on the Create page is saved to the library and can be reused from "Your uploads".
+- Audio influence control for Advanced covers.
+- Gradient thumbnails for uploaded audio.
+
+### Changed
+
+- Uploads are sent to KIE again automatically once its 24 hour copy has expired.
+- Clearer wording on how attached audio is used in Simple mode, Keep my vocal and the Cover dialog.
+
+### Fixed
+
+- The magic wand no longer adds vocals to the prompt when Instrumental is on.
+
 ## [0.1.0] - 2026-10-18
 
 First public release.

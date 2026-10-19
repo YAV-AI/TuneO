@@ -1,5 +1,6 @@
 import { KieError } from "@/lib/kie";
-import { submitJob, type JobKind } from "@/lib/jobs";
+import { publicAudioUrl, submitJob, type JobKind } from "@/lib/jobs";
+import { getSong } from "@/lib/songs";
 import { markVoiceBroken, personaFor } from "@/lib/voices";
 
 const MODELS = new Set(["V6", "V6_MINI", "V6_WILD"]);
@@ -18,8 +19,10 @@ export type GenerateBody = {
   styleInfluence?: number;
   variety?: number;
   duration?: number;
-  // KIE temp URLs from /api/upload
+  // A saved song or upload used as the audio source; resolved to a KIE URL here.
+  audioSongId?: string;
   audioUrls?: string[];
+  // KIE temp URLs from /api/upload
   imageUrls?: string[];
   voiceId?: string;
   audioWeight?: number;
@@ -61,8 +64,10 @@ function build(b: GenerateBody): { kind: JobKind; input: Record<string, unknown>
     const persona = personaFor(b.voiceId);
     if (!persona) return "That voice is not ready yet";
     Object.assign(knobs, persona);
-    // audio_weight is how strongly the voice reference is followed; not valid without vocals.
-    if (!b.instrumental && typeof b.audioWeight === "number") knobs.audio_weight = round2(b.audioWeight);
+  }
+  // audio_weight is how closely the voice or uploaded audio is followed; not valid without vocals.
+  if ((b.voiceId || audioUrls.length) && !b.instrumental && typeof b.audioWeight === "number") {
+    knobs.audio_weight = round2(b.audioWeight);
   }
   if (negative) knobs.negative_tags = negative.slice(0, 200);
   if (!b.instrumental && b.vocalGender) knobs.vocal_gender = b.vocalGender;
@@ -104,6 +109,16 @@ function build(b: GenerateBody): { kind: JobKind; input: Record<string, unknown>
 
 export async function POST(req: Request) {
   const body = (await req.json()) as GenerateBody;
+  if (body.audioSongId) {
+    const song = getSong(body.audioSongId);
+    if (!song || song.deleted_at)
+      return Response.json({ error: "That audio is no longer in your library" }, { status: 404 });
+    try {
+      body.audioUrls = [await publicAudioUrl(song)];
+    } catch (err) {
+      return Response.json({ error: (err as Error).message }, { status: 502 });
+    }
+  } else body.audioUrls = [];
   const job = build(body);
   if (typeof job === "string") return Response.json({ error: job }, { status: 400 });
 

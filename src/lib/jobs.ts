@@ -52,15 +52,35 @@ export async function submitJob(kind: JobKind, input: Record<string, unknown>, s
 }
 
 const KIE_URL_TTL_MS = 12 * 86_400_000;
+// KIE keeps uploads for 24 hours; only reuse a copy well inside that window.
+const UPLOAD_REUSE_MS = 20 * 3_600_000;
 
 // A URL KIE can fetch for this song's audio. KIE's own link lasts 14 days;
 // after that, re-upload the archived copy to KIE's temp storage.
 export async function publicAudioUrl(song: SongRow) {
+  if (song.task_id === "upload") return uploadedAudioUrl(song);
   if (song.audio_url && Date.now() - song.created_at < KIE_URL_TTL_MS) return song.audio_url;
   if (!song.audio_key) throw new Error("Song audio is not available");
   const obj = await getObject(song.audio_key);
   const bytes = await obj.Body!.transformToByteArray();
   return uploadFile(bytes, `${song.id}.mp3`, obj.ContentType ?? "audio/mpeg");
+}
+
+// Uploaded audio lives in our storage. Reuse KIE's temp copy while it is fresh and still
+// reachable; otherwise send the whole file again. The upload time is part of the file name.
+async function uploadedAudioUrl(song: SongRow) {
+  const at = Number(song.audio_url?.match(/\.(\d{13})\.\w+$/)?.[1]);
+  if (song.audio_url && Date.now() - at < UPLOAD_REUSE_MS) {
+    const head = await fetch(song.audio_url, { method: "HEAD", signal: AbortSignal.timeout(10_000) }).catch(() => null);
+    if (head?.ok) return song.audio_url;
+  }
+  if (!song.audio_key) throw new Error("Song audio is not available");
+  const obj = await getObject(song.audio_key);
+  const bytes = await obj.Body!.transformToByteArray();
+  const ext = song.audio_key.split(".").pop() || "mp3";
+  const url = await uploadFile(bytes, `${song.id}.${Date.now()}.${ext}`, obj.ContentType ?? "audio/mpeg");
+  db.prepare("UPDATE songs SET audio_url = ? WHERE id = ?").run(url, song.id);
+  return url;
 }
 
 const TIMESTAMPS_PRICE = 0.5;

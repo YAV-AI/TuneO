@@ -22,10 +22,11 @@ import VoicePicker from "./voice/VoicePicker";
 import type { Voice } from "./voice/types";
 import { clock, useRecorder } from "./voice/useRecorder";
 import { Avatar } from "./ProfileDialog";
-import { MODEL_OPTIONS, postJson } from "./types";
+import { MODEL_OPTIONS, postJson, readDuration, type Song } from "./types";
 
 type Mode = "simple" | "advanced";
-type Attachment = { url: string; kind: "audio" | "image"; name: string };
+// Audio attachments are saved songs (id = song id); images are KIE temp URLs (id = url).
+type Attachment = { id: string; kind: "audio" | "image"; name: string };
 
 const STYLE_IDEAS = [
   "amapiano",
@@ -75,7 +76,7 @@ function pickIdeas(n: number) {
 }
 
 export default function CreatePanel() {
-  const { load: onCreated, preset } = useStudio();
+  const { load: onCreated, preset, songs } = useStudio();
   const [mode, setMode] = useState<Mode>("simple");
   const [model, setModel] = useState("V6");
   const [instrumental, setInstrumental] = useState(false);
@@ -94,6 +95,9 @@ export default function CreatePanel() {
   const [touched, setTouched] = useState(false);
   // How strongly a selected voice shapes the vocals (sent as audio_weight).
   const [voiceInfluence, setVoiceInfluence] = useState(0.85);
+  // How closely a cover follows the attached audio (also audio_weight). Sent only once moved.
+  const [audioInfluence, setAudioInfluence] = useState(0.5);
+  const [audioTouched, setAudioTouched] = useState(false);
   const [ideas, setIdeas] = useState<string[]>(() => STYLE_IDEAS.slice(0, 6));
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [voice, setVoice] = useState<Voice | null>(null);
@@ -122,6 +126,8 @@ export default function CreatePanel() {
   // An attached recording can be re-sung (cover) or kept as the vocal with music added.
   const [audioMode, setAudioMode] = useState<"cover" | "vocal">("cover");
   const keepVocal = !!audio && mode === "advanced" && audioMode === "vocal";
+  // Covers can be told how closely to follow the audio; not with Instrumental, and a voice has its own slider.
+  const showAudioInfluence = !!audio && mode === "advanced" && audioMode === "cover" && !instrumental && !voice;
   const canCreate =
     mode === "simple"
       ? !!(prompt.trim() || attachments.length)
@@ -154,10 +160,11 @@ export default function CreatePanel() {
         // Only send knobs the user changed, so KIE keeps its own defaults otherwise.
         ...(touched ? { weirdness, styleInfluence, variety } : {}),
         ...(durationMode === "custom" ? { duration } : {}),
-        audioUrls: attachments.filter((a) => a.kind === "audio").map((a) => a.url),
+        audioSongId: audio?.id,
         audioMode,
         ...(voice && mode === "advanced" ? { voiceId: voice.id, audioWeight: voiceInfluence } : {}),
-        imageUrls: mode === "simple" ? attachments.filter((a) => a.kind === "image").map((a) => a.url) : [],
+        ...(!voice && showAudioInfluence && audioTouched ? { audioWeight: audioInfluence } : {}),
+        imageUrls: mode === "simple" ? attachments.filter((a) => a.kind === "image").map((a) => a.id) : [],
       });
       onCreated();
     });
@@ -191,7 +198,7 @@ export default function CreatePanel() {
   const rewritePrompt = () =>
     run("rewrite", async () => {
       const before = prompt;
-      const data = await postJson<{ prompt: string }>("/api/prompt-rewrite", { prompt });
+      const data = await postJson<{ prompt: string }>("/api/prompt-rewrite", { prompt, instrumental });
       setPrompt(data.prompt);
       setPromptBefore(before);
     });
@@ -202,18 +209,32 @@ export default function CreatePanel() {
       setStyle(data.style);
     });
 
+  const attach = (item: Attachment) =>
+    setAttachments((prev) => [
+      // One audio source at a time; up to 5 images.
+      ...prev.filter((a) => (item.kind === "audio" ? a.kind !== "audio" : true)).slice(-4),
+      item,
+    ]);
+
+  // Audio is saved to the library so it can be reused later; images only go to KIE's temp storage.
   const upload = (file: File) =>
     run("upload", async () => {
       const form = new FormData();
       form.set("file", file);
+      if (file.type.startsWith("audio/")) {
+        const duration = await readDuration(file);
+        if (duration) form.set("duration", String(duration));
+        const res = await fetch("/api/songs/upload", { method: "POST", body: form });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error ?? "Upload failed");
+        attach({ id: data.id, kind: "audio", name: data.title });
+        onCreated();
+        return;
+      }
       const res = await fetch("/api/upload", { method: "POST", body: form });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error ?? "Upload failed");
-      setAttachments((prev) => [
-        // One audio source at a time; up to 5 images.
-        ...prev.filter((a) => (data.kind === "audio" ? a.kind !== "audio" : true)).slice(-4),
-        { url: data.url, kind: data.kind, name: data.name },
-      ]);
+      attach({ id: data.url, kind: data.kind, name: data.name });
     });
 
   const addTag = (tag: string) => {
@@ -233,6 +254,7 @@ export default function CreatePanel() {
     setStyleInfluence(0.5);
     setVariety(1);
     setTouched(false);
+    setAudioTouched(false);
     setAttachments([]);
     setInstrumental(false);
     setError(null);
@@ -276,11 +298,29 @@ export default function CreatePanel() {
           uploading={busy === "upload"}
           imagesAllowed={mode === "simple"}
           onUpload={upload}
-          onRemove={(url) => setAttachments((prev) => prev.filter((a) => a.url !== url))}
+          uploads={songs.filter((s) => s.task_id === "upload")}
+          onPick={(s) => attach({ id: s.id, kind: "audio", name: s.title })}
+          onRemove={(id) => setAttachments((prev) => prev.filter((a) => a.id !== id))}
           voice={voice}
           onVoice={() => setPickerOpen(true)}
           onClearVoice={() => setVoice(null)}
         />
+        {audio && mode === "simple" && (
+          <div className="flex items-center justify-between gap-3 rounded-2xl bg-surface px-4 py-3 text-xs">
+            <span className="text-dim">
+              <span className="block text-sm text-fg">Used as inspiration</span>A new song takes cues from this audio.
+            </span>
+            <button
+              onClick={() => {
+                setMode("advanced");
+                setAudioMode("cover");
+              }}
+              className="shrink-0 rounded-full bg-raised px-3 py-1.5 text-fg hover:bg-hover"
+            >
+              Cover it instead
+            </button>
+          </div>
+        )}
         {audio && mode === "advanced" && (
           <div className="rounded-2xl bg-surface p-1">
             <div className="grid grid-cols-2 gap-1 text-xs">
@@ -300,6 +340,12 @@ export default function CreatePanel() {
                 </button>
               ))}
             </div>
+            {audioMode === "vocal" && (
+              <p className="px-3 pb-2 pt-1.5 text-xs text-dim">
+                For vocal recordings only, like singing or rap. Instruments or full songs will not give the same
+                results; use Cover it, or Extend from the song menu, for those.
+              </p>
+            )}
           </div>
         )}
         {pickerOpen && (
@@ -356,6 +402,28 @@ export default function CreatePanel() {
           </div>
         ) : (
           <>
+            {showAudioInfluence && (
+              <div className="rounded-2xl bg-surface px-4 py-3">
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-sm">Audio influence</span>
+                  <div className="flex items-center gap-2">
+                    <TickSlider
+                      value={audioInfluence}
+                      onChange={(v) => {
+                        setAudioInfluence(v);
+                        setAudioTouched(true);
+                      }}
+                    />
+                    <span className="w-10 text-right text-xs tabular-nums">
+                      {audioTouched ? `${Math.round(audioInfluence * 100)}%` : "Auto"}
+                    </span>
+                  </div>
+                </div>
+                <p className="mt-1 text-xs text-dim">
+                  Higher stays closer to your audio. Set Variety to Off for the closest match.
+                </p>
+              </div>
+            )}
             {voice && !instrumental && (
               <div className="rounded-2xl bg-surface px-4 py-3">
                 <div className="flex items-center justify-between gap-3">
@@ -585,6 +653,8 @@ function Attachments({
   uploading,
   imagesAllowed,
   onUpload,
+  uploads,
+  onPick,
   onRemove,
   voice,
   onVoice,
@@ -594,7 +664,9 @@ function Attachments({
   uploading: boolean;
   imagesAllowed: boolean;
   onUpload: (f: File) => void;
-  onRemove: (url: string) => void;
+  uploads: Song[];
+  onPick: (s: Song) => void;
+  onRemove: (id: string) => void;
   voice: Voice | null;
   onVoice: () => void;
   onClearVoice: () => void;
@@ -658,7 +730,7 @@ function Attachments({
         </button>
       </div>
       {menu && (
-        <div className="absolute left-0 top-[52px] z-30 w-36 rounded-xl border border-line bg-raised p-1 text-sm shadow-xl">
+        <div className="absolute left-0 top-[52px] z-30 w-64 rounded-xl border border-line bg-raised p-1 text-sm shadow-xl">
           <button
             onClick={() => pick(audioInput.current)}
             className="flex w-full items-center gap-2 rounded-lg px-3 py-2 hover:bg-hover"
@@ -674,6 +746,29 @@ function Attachments({
           >
             <Mic size={14} /> Record
           </button>
+          {uploads.length > 0 && (
+            <>
+              <p className="mt-1 border-t border-line px-3 pb-1 pt-2 text-xs text-dim">Your uploads</p>
+              <div className="scroll-thin max-h-56 overflow-y-auto">
+                {uploads.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      setMenu(false);
+                      onPick(s);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left hover:bg-hover"
+                  >
+                    <Music2 size={14} className="shrink-0" />
+                    <span className="flex-1 truncate">{s.title}</span>
+                    {s.duration ? (
+                      <span className="text-xs text-dim">{formatDuration(Math.round(s.duration))}</span>
+                    ) : null}
+                  </button>
+                ))}
+              </div>
+            </>
+          )}
         </div>
       )}
       <input ref={audioInput} type="file" accept="audio/*" hidden onChange={onChange} />
@@ -704,10 +799,10 @@ function Attachments({
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {attachments.map((a) => (
-            <span key={a.url} className="flex items-center gap-1.5 rounded-full bg-raised py-1 pl-3 pr-1 text-xs">
+            <span key={a.id} className="flex items-center gap-1.5 rounded-full bg-raised py-1 pl-3 pr-1 text-xs">
               {a.kind === "audio" ? <Music2 size={12} /> : <ImageIcon size={12} />}
               <span className="max-w-40 truncate">{a.name}</span>
-              <button onClick={() => onRemove(a.url)} className="rounded-full p-1 hover:bg-hover" aria-label="Remove">
+              <button onClick={() => onRemove(a.id)} className="rounded-full p-1 hover:bg-hover" aria-label="Remove">
                 <X size={12} />
               </button>
             </span>

@@ -7,7 +7,8 @@ export function withMediaUrls(s: SongRow): SongRow {
   return {
     ...s,
     audio_url: s.audio_key ? `/api/media/${s.id}/audio` : s.audio_url,
-    image_url: s.image_key ? `/api/media/${s.id}/cover` : s.image_url,
+    // Uploads have no art of their own; the media route draws a gradient for them.
+    image_url: s.image_key || s.task_id === "upload" ? `/api/media/${s.id}/cover` : s.image_url,
   };
 }
 

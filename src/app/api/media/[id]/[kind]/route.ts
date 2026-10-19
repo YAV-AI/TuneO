@@ -1,3 +1,4 @@
+import { gradientCover } from "@/lib/gradientCover";
 import { streamObject } from "@/lib/media";
 import { getSong } from "@/lib/songs";
 import { taggedDownload, tagsFor } from "@/lib/songTags";
@@ -11,6 +12,11 @@ export async function GET(req: Request, ctx: RouteContext<"/api/media/[id]/[kind
   if (!song) return new Response("Not found", { status: 404 });
 
   const key = kind === "audio" ? song.audio_key : song.image_key;
+  if (!key && kind === "cover" && song.task_id === "upload") {
+    return new Response(gradientCover(song.id), {
+      headers: { "Content-Type": "image/svg+xml", "Cache-Control": "public, max-age=86400" },
+    });
+  }
   if (!key) {
     const remote = kind === "audio" ? song.audio_url || song.stream_url : song.image_url;
     return remote ? Response.redirect(remote, 302) : new Response("Not found", { status: 404 });
