@@ -1,6 +1,6 @@
 {
   "name": "tuneo",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TuneO: an open-source, self-hosted AI music studio (Suno alternative) powered by the KIE AI music API.",
   "license": "AGPL-3.0-only",
   "private": true,
