@@ -5,6 +5,7 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { ArrowLeft, Loader2, Plus, Trash2 } from "lucide-react";
 import { useStudio } from "../StudioContext";
+import { readDuration } from "../types";
 
 const TABS = [
   { href: "/library", label: "Songs" },
@@ -69,24 +70,6 @@ export default function LibraryShell({ children }: { children: React.ReactNode }
       {children}
     </div>
   );
-}
-
-// Reads the duration in the browser (the server has no audio decoder), then uploads.
-function readDuration(file: File) {
-  return new Promise<number | null>((resolve) => {
-    const url = URL.createObjectURL(file);
-    const audio = new Audio();
-    audio.preload = "metadata";
-    audio.onloadedmetadata = () => {
-      URL.revokeObjectURL(url);
-      resolve(Number.isFinite(audio.duration) ? audio.duration : null);
-    };
-    audio.onerror = () => {
-      URL.revokeObjectURL(url);
-      resolve(null);
-    };
-    audio.src = url;
-  });
 }
 
 function UploadButton() {

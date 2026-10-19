@@ -4,7 +4,8 @@ import { putObject } from "@/lib/storage";
 
 const MAX_BYTES = 100 * 1024 * 1024;
 
-// "+ Audio" on the Library page: your own audio becomes a song you can cover, extend or split.
+// "+ Audio" on the Library and Create pages: your own audio becomes a song you can reuse,
+// cover, extend or split. KIE only keeps uploads for 24 hours, so the file lives in storage.
 export async function POST(req: Request) {
   const form = await req.formData();
   const file = form.get("file");
@@ -25,5 +26,5 @@ export async function POST(req: Request) {
     `INSERT INTO songs (id, task_id, title, duration, created_at, audio_key, archived_at, origin)
      VALUES (?, 'upload', ?, ?, ?, ?, ?, 'Upload')`,
   ).run(id, title, Number.isFinite(duration) && duration > 0 ? duration : null, now, key, now);
-  return Response.json({ id });
+  return Response.json({ id, title });
 }
